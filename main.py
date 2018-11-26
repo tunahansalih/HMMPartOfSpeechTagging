@@ -1,32 +1,32 @@
 import numpy as np
 
-f = open('Project (Application 1) (MetuSabanci Treebank).conll')
+f = open('Project (Application 1) (MetuSabanci Treebank).conll', encoding='utf-8')
 
-SOS = "<s>" #Start of sentence
-EOS = "</s>" #End of sentence
+SOS = "<s>"  # Start of sentence
+EOS = "</s>"  # End of sentence
 
 
-
-def create_n_gram(data, n=2):
+def get_observation_dict(data):
+    print('Creating Observation Dictionary')
     observations = {}
     for sentence in data:
-        for i in range(len(sentence)-n+1):
-            n_gram_word = ""
-            for j in range(n):
-                n_gram_word += f'{sentence[i+j][0]} '
-            n_gram_word = n_gram_word.strip()
-            observations[n_gram_word] = observations.get(n_gram_word, 0) + 1
-    total_occurences = np.sum(list(observations.values()))
-    for k in observations.keys():
-        observations[k] /= total_occurences
+        for word in sentence:
+            observations[word[0]] = observations.get(word[0], {})
+            observations[word[0]][word[1]] = observations[word[0]].get(word[1], 0) + 1
+    for word, v in observations.items():
+        total_occurence = np.sum(list(observations[word].values()))
+        for tag, v1 in observations[word].items():
+            observations[word][tag] /= total_occurence
     return observations
 
+
 def get_transition_dict(data):
+    print('Creating Transition Dictionary')
     transitions = {}
     for sentence in data:
-        for i in range(len(sentence)-1):
+        for i in range(len(sentence) - 1):
             transitions[sentence[i][1]] = transitions.get(sentence[i][1], {})
-            transitions[sentence[i][1]][sentence[i+1][1]] = transitions[sentence[i][1]].get(sentence[i+1][1], 0) + 1
+            transitions[sentence[i][1]][sentence[i + 1][1]] = transitions[sentence[i][1]].get(sentence[i + 1][1], 0) + 1
 
     for first_tag, second_tags in transitions.items():
         total_occurrence = np.sum(list(second_tags.values()))
@@ -37,8 +37,10 @@ def get_transition_dict(data):
 
     return transitions
 
+
 def viterbi(observation_dict, transition_dict, test):
     pass
+
 
 ### Read Data
 data = []
@@ -48,6 +50,7 @@ for line in f:
     if len(columns) == 10 and columns[1] != "_":
         ### Handle the wrong annotation
         if columns[3] == "satın":
+            print('satın')
             columns[3] = "Noun"
         sentence.append([columns[1], columns[3]])
     if len(columns) == 0:
@@ -61,9 +64,8 @@ for sentence in data:
 
 ### Create train and test data
 np.random.shuffle(data)
-train_data = data[:int(len(data)*0.9)]
-test_data = data[int(len(data)*0.9):]
+train_data = data[:int(len(data) * 0.9)]
+test_data = data[int(len(data) * 0.9):]
 
-observations_dict = create_n_gram(train_data, n=2)
+observations_dict = get_observation_dict(train_data)
 transitions_dict = get_transition_dict(train_data)
-
