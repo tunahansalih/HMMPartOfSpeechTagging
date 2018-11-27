@@ -37,10 +37,46 @@ def get_transition_dict(data):
 
     return transitions
 
-
-def viterbi(observation_dict, transition_dict, test):
-    pass
-
+def viterbi(observation_dict, transition_dict, sentence):
+    states = list(transition_dict.keys())
+    viterbi = np.zeros((len(states)+1, len(sentence)-1))
+    backpointer = np.zeros((len(states)+1, len(sentence)-1))
+    
+    ### Initialization step
+    for s in range(1,len(states)):
+        current_tag = states[s]
+        viterbi[s,1] = transition_dict[SOS].get(current_tag, 0) * observation_dict[sentence[1][0]].get(current_tag, 0)
+        backpointer[s,1] = 0
+        
+    ### Recursion Step
+    for t in range(2, len(sentence)-1):
+        for s in range(1, len(states)):
+            current_tag = states[s]
+            max_path = 0;
+            max_state = 0;
+            for i in range(1, len(states)):
+                previous_tag = states[i]
+                path_prob = viterbi[i,t-1]*transition_dict[previous_tag].get(current_tag, 0)* observation_dict[sentence[t][0]].get(current_tag, 0)
+                if path_prob > max_path:
+                    max_path = path_prob
+                    max_state = i
+            viterbi[s,t] = max_path
+            backpointer[s,t] = max_state
+    
+    # Termination Step
+    max_final = 0;
+    max_final_point = 0;
+    for s in range(1,len(states)):
+        current_tag = states[s]
+        curr_prob = viterbi[s,len(sentence)-2]*transition_dict[current_tag].get(EOS, 0) 
+        if(curr_prob > max_final):
+            max_final = curr_prob
+            max_final_point = s
+    
+    viterbi[len(states),len(sentence)-2] = max_final
+    backpointer[len(states),len(sentence)-2] =  max_final_point
+    
+    return backpointer
 
 ### Read Data
 data = []
@@ -69,3 +105,5 @@ test_data = data[int(len(data) * 0.9):]
 
 observations_dict = get_observation_dict(train_data)
 transitions_dict = get_transition_dict(train_data)
+
+print(observations_dict)
