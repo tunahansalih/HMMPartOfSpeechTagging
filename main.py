@@ -1,10 +1,18 @@
 import numpy as np
+import random as rn
+import re
 
 f = open('Project (Application 1) (MetuSabanci Treebank).conll', encoding='utf-8')
 
 SOS = "<s>"  # Start of sentence
 EOS = "</s>"  # End of sentence
+observations_dict = {}
+transitions_dict = {}
 
+rules = [ r'.*(lar|ler)[aeıi]?$', r'.*(ti|tı|dı|di|du|dü|tu|tü)$', r'.*(yor).*$',  r'.*(cak|cek).*$', r'^[A-ZIÇŞÜÖ].*']
+#rules = []
+unknown_word_rules = {}
+general_dist = {}
 
 def get_observation_dict(data):
     print('Creating Observation Dictionary')
@@ -36,6 +44,23 @@ def get_transition_dict(data):
 
     return transitions
 
+def fill_general_distribution(data):
+    words = {}
+    tags = {}
+    dist = {}
+    for sentence in data:
+        for word in sentence:
+            if word[1] != SOS and word[1] != EOS:
+                words[word[0]] = words.get(word[0], 0) + 1
+                tags[word[0]] = word[1]
+
+    for word, count in words.items():
+        if count == 1:
+            dist[tags[word]] = dist.get(tags[word], 0) + 1
+    
+    sum = np.sum(list(dist.values()))
+    dist = {k: v / sum for k, v in dist.items()}
+    return dist
 
 def viterbi(observation_dict, transition_dict, sentence):
     states = list(transition_dict.keys())
@@ -45,7 +70,7 @@ def viterbi(observation_dict, transition_dict, sentence):
     ### Initialization step
     for s in range(1, len(states)):
         current_tag = states[s]
-        viterbi[s, 1] = transition_dict[SOS].get(current_tag, 0) * observation_dict[sentence[1][0]].get(current_tag, 0)
+        viterbi[s, 1] = transition_dict[SOS].get(current_tag, 0) * observation_dict.get(sentence[1][0], unknown_handle(sentence[1][0])).get(current_tag, 0)
         backpointer[s, 1] = 0
 
     ### Recursion Step
@@ -56,8 +81,7 @@ def viterbi(observation_dict, transition_dict, sentence):
             max_state = 0;
             for i in range(1, len(states)):
                 previous_tag = states[i]
-                path_prob = viterbi[i, t - 1] * transition_dict[previous_tag].get(current_tag, 0) * observation_dict[
-                    sentence[t][0]].get(current_tag, 0)
+                path_prob = viterbi[i, t - 1] * transition_dict[previous_tag].get(current_tag, 0) * observation_dict.get(sentence[t][0], unknown_handle(sentence[t][0])).get(current_tag, 0)
                 if path_prob > max_path:
                     max_path = path_prob
                     max_state = i
@@ -79,6 +103,26 @@ def viterbi(observation_dict, transition_dict, sentence):
 
     return backpointer
 
+def unknown_handle(word):
+    for pattern, dist in unknown_word_rules.items():
+        match = re.match(pattern, word)
+        if match:
+            return dist
+    
+    return general_dist
+
+def fill_rule_distributions(rules):
+    for rule in rules:
+        dist_dict = {}
+        for sentence in train_data:
+            for word in sentence:
+                match = re.search(rule, word[0])
+                if match:
+                    dist_dict[word[1]] = dist_dict.get(word[1], 0) + 1
+        sum = np.sum(list(dist_dict.values()))
+        dist_dict = {k: v / sum for k, v in dist_dict.items()}
+        unknown_word_rules[rule] = dist_dict
+                
 
 def get_backtrack(backtrack_matrice, tags_in_corpus):
     tags = np.array([])
@@ -119,7 +163,7 @@ for line in f:
         ### Handle the wrong annotation
         if columns[3] == "satın":
             columns[3] = "Noun"
-        sentence.append([columns[1], columns[3]])
+        sentence.append([columns[1].lower(), columns[3]])
     if len(columns) == 0:
         data.append(sentence)
         sentence = []
@@ -140,17 +184,17 @@ transitions_dict = get_transition_dict(train_data)
 tags = list(transitions_dict.keys())
 tags.append(EOS)
 
+general_dist = fill_general_distribution(train_data)
+fill_rule_distributions(rules)
+
+print(general_dist)
+
 sum = 0
-for sentence in train_data:
+for sentence in test_data:
     backtrack = viterbi(observations_dict, transitions_dict, sentence)
     result = get_backtrack(backtrack, tags)
     if check_sentence(get_tags(sentence), result):
         sum += 1
 
-print(f'Accuracy: {sum/len(train_data)}')
+print(f'Accuracy: {sum/len(test_data)}')
 
-
-random_sentence = train_data[np.random.randint(len(train_data))]
-print(random_sentence)
-backtrack = viterbi(observations_dict, transitions_dict, random_sentence)
-result = get_backtrack(backtrack, tags)
