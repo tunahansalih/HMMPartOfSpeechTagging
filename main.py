@@ -7,7 +7,9 @@ import re
 import matplotlib.pyplot as plt
 import pandas
 from pandas_ml import ConfusionMatrix
+
 pandas.set_option('display.max_columns', None)
+
 f = open('Project (Application 1) (MetuSabanci Treebank).conll', encoding='utf-8')
 
 SOS = "<s>"  # Start of sentence
