@@ -189,8 +189,8 @@ for line in f:
         ### Handle the wrong annotation
         if columns[3] == "satın":
             columns[3] = "Noun"
-        sentence.append([columns[1].lower(), columns[3]])
-        # sentence.append([columns[1], columns[3]])
+        # sentence.append([columns[1].lower(), columns[3]])
+        sentence.append([columns[1], columns[3]])
     if len(columns) == 0:
         data.append(sentence)
         sentence = []
@@ -234,24 +234,25 @@ cm = ConfusionMatrix(all_expected_tags, all_predicted_tags)
 cm.plot()
 plt.show()
 
-stats = cm.stats()
-
-f = open('stats_lower.txt', 'w')
-f.write(f'Overall Statistics:\n')
-for k, v in stats['overall'].items():
-    f.write(f'{k}: {v}\n')
-
-for k, v in stats['class'].items():
-    f.write(f'{k}: {v}\n')
-
-f.write(str(stats['overall']))
-f.write(str(stats['class']))
-
-cm = ConfusionMatrix(all_expected_tags, all_predicted_tags)
-cm.plot(normalized=True)
+cm_normalized = ConfusionMatrix(all_expected_tags, all_predicted_tags)
+cm_normalized.plot(normalized=True)
 plt.show()
-cm.print_stats()
-f.close()
+
+# cm.print_stats()
+# stats = cm.stats()
+#
+# f = open('stats.txt', 'w')
+# f.write(f'Overall Statistics:\n')
+# for k, v in stats['overall'].items():
+#     f.write(f'{k}: {v}\n')
+#
+# for k, v in stats['class'].items():
+#     f.write(f'{k}: {v}\n')
+#
+# f.write(str(stats['overall']))
+# f.write(str(stats['class']))
+# f.close()
+
 
 for k, v in unknown_word_rules.items():
     plt.bar(list(v.keys()), list(v.values()))
