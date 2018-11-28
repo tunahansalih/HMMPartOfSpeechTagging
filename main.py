@@ -1,11 +1,13 @@
+#!/usr/local/bin/python
+# -*- coding: utf-8 -*-
+
 import numpy as np
 import random as rn
 import re
 import matplotlib.pyplot as plt
-
+import pandas
 from pandas_ml import ConfusionMatrix
-
-
+pandas.set_option('display.max_columns', None)
 f = open('Project (Application 1) (MetuSabanci Treebank).conll', encoding='utf-8')
 
 SOS = "<s>"  # Start of sentence
@@ -13,10 +15,11 @@ EOS = "</s>"  # End of sentence
 observations_dict = {}
 transitions_dict = {}
 
-rules = [ r'.*(lar|ler)[aeıi]?$', r'.*(ti|tı|dı|di|du|dü|tu|tü)$', r'.*(yor).*$',  r'.*(cak|cek).*$', r'^[A-ZIÇŞÜÖ].*']
-#rules = []
+rules = [r'.*(lar|ler)[aeıi]?$', r'.*(ti|tı|dı|di|du|dü|tu|tü)$', r'.*(yor).*$', r'.*(cak|cek).*$', r'^[A-ZIÇŞÜÖ].*']
+# rules = []
 unknown_word_rules = {}
 general_dist = {}
+
 
 def get_observation_dict(data):
     print('Creating Observation Dictionary')
@@ -46,8 +49,8 @@ def get_transition_dict(data):
             second_tags[k] /= total_occurrence
         transitions[first_tag] = second_tags
 
-
     return transitions
+
 
 def fill_general_distribution(data):
     words = {}
@@ -62,10 +65,11 @@ def fill_general_distribution(data):
     for word, count in words.items():
         if count == 1:
             dist[tags[word]] = dist.get(tags[word], 0) + 1
-    
+
     sum = np.sum(list(dist.values()))
     dist = {k: v / sum for k, v in dist.items()}
     return dist
+
 
 def viterbi(observation_dict, transition_dict, sentence):
     states = list(transition_dict.keys())
@@ -75,7 +79,8 @@ def viterbi(observation_dict, transition_dict, sentence):
     ### Initialization step
     for s in range(1, len(states)):
         current_tag = states[s]
-        viterbi[s, 1] = transition_dict[SOS].get(current_tag, 0) * observation_dict.get(sentence[1][0], unknown_handle(sentence[1][0])).get(current_tag, 0)
+        viterbi[s, 1] = transition_dict[SOS].get(current_tag, 0) * observation_dict.get(sentence[1][0], unknown_handle(
+            sentence[1][0])).get(current_tag, 0)
         backpointer[s, 1] = 0
 
     ### Recursion Step
@@ -86,7 +91,9 @@ def viterbi(observation_dict, transition_dict, sentence):
             max_state = 0;
             for i in range(1, len(states)):
                 previous_tag = states[i]
-                path_prob = viterbi[i, t - 1] * transition_dict[previous_tag].get(current_tag, 0) * observation_dict.get(sentence[t][0], unknown_handle(sentence[t][0])).get(current_tag, 0)
+                path_prob = viterbi[i, t - 1] * transition_dict[previous_tag].get(current_tag,
+                                                                                  0) * observation_dict.get(
+                    sentence[t][0], unknown_handle(sentence[t][0])).get(current_tag, 0)
                 if path_prob > max_path:
                     max_path = path_prob
                     max_state = i
@@ -108,13 +115,15 @@ def viterbi(observation_dict, transition_dict, sentence):
 
     return backpointer
 
+
 def unknown_handle(word):
     for pattern, dist in unknown_word_rules.items():
         match = re.match(pattern, word)
         if match:
             return dist
-    
+
     return general_dist
+
 
 def fill_rule_distributions(rules):
     for rule in rules:
@@ -127,7 +136,7 @@ def fill_rule_distributions(rules):
         sum = np.sum(list(dist_dict.values()))
         dist_dict = {k: v / sum for k, v in dist_dict.items()}
         unknown_word_rules[rule] = dist_dict
-                
+
 
 def get_backtrack(backtrack_matrice, tags_in_corpus):
     tags = np.array([])
@@ -161,6 +170,14 @@ def check_sentence(expected_tags, predicted_tags):
     return True
 
 
+def get_word_based_accuracy(expected_tags, predicted_tags):
+    sum = 0
+    for e, p in zip(expected_tags, predicted_tags):
+        if e == p:
+            sum += 1
+    return sum / len(expected_tags)
+
+
 ### Read Data
 data = []
 sentence = []
@@ -171,6 +188,7 @@ for line in f:
         if columns[3] == "satın":
             columns[3] = "Noun"
         sentence.append([columns[1].lower(), columns[3]])
+        # sentence.append([columns[1], columns[3]])
     if len(columns) == 0:
         data.append(sentence)
         sentence = []
@@ -206,8 +224,38 @@ for sentence in test_data:
     if check_sentence(get_tags(sentence), result):
         sum += 1
 
-print(f'Accuracy: {sum/len(test_data)}')
+print(f'Sentece-Based Accuracy: {sum/len(test_data)}')
+
+print(f'Word-based Accuracy: {get_word_based_accuracy(all_expected_tags, all_predicted_tags)}')
+
+cm = ConfusionMatrix(all_expected_tags, all_predicted_tags)
+cm.plot()
+plt.show()
+
+stats = cm.stats()
+
+f = open('stats_lower.txt', 'w')
+f.write(f'Overall Statistics:\n')
+for k, v in stats['overall'].items():
+    f.write(f'{k}: {v}\n')
+
+for k, v in stats['class'].items():
+    f.write(f'{k}: {v}\n')
+
+f.write(str(stats['overall']))
+f.write(str(stats['class']))
 
 cm = ConfusionMatrix(all_expected_tags, all_predicted_tags)
 cm.plot(normalized=True)
+plt.show()
+cm.print_stats()
+f.close()
+
+for k, v in unknown_word_rules.items():
+    plt.bar(list(v.keys()), list(v.values()))
+    plt.title(label=f'Regex Rule: {k}')
+    plt.show()
+
+plt.bar(list(general_dist.keys()), list(general_dist.values()))
+plt.title(label='Hapax Legomenon Distribution')
 plt.show()
