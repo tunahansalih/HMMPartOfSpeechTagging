@@ -1,6 +1,10 @@
 import numpy as np
 import random as rn
 import re
+import matplotlib.pyplot as plt
+
+from pandas_ml import ConfusionMatrix
+
 
 f = open('Project (Application 1) (MetuSabanci Treebank).conll', encoding='utf-8')
 
@@ -41,6 +45,7 @@ def get_transition_dict(data):
         for k in second_tags.keys():
             second_tags[k] /= total_occurrence
         transitions[first_tag] = second_tags
+
 
     return transitions
 
@@ -149,6 +154,8 @@ def get_tags(sentence):
 
 def check_sentence(expected_tags, predicted_tags):
     for i in range(len(predicted_tags)):
+        all_expected_tags.append(expected_tags[i])
+        all_predicted_tags.append(predicted_tags[i])
         if expected_tags[i] != predicted_tags[i]:
             return False
     return True
@@ -187,6 +194,9 @@ tags.append(EOS)
 general_dist = fill_general_distribution(train_data)
 fill_rule_distributions(rules)
 
+all_expected_tags = []
+all_predicted_tags = []
+
 print(general_dist)
 
 sum = 0
@@ -198,3 +208,6 @@ for sentence in test_data:
 
 print(f'Accuracy: {sum/len(test_data)}')
 
+cm = ConfusionMatrix(all_expected_tags, all_predicted_tags)
+cm.plot(normalized=True)
+plt.show()
